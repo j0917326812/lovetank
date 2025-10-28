@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CyberShield Portal — 全球資安監控中心</title>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ================== Reset & Root ================== */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    :root{
+      --accent:#00f0f0;
+      --accent-2:#00b3b3;
+      --bg:#071015;
+      --card:#0f1113;
+      --muted:#98a0a6;
+      --text:#e9f3f3;
+      --glass: rgba(255,255,255,0.03);
+      --radius:12px;
+      --transition: 220ms ease;
+      --maxw:1300px;
+      --danger:#ff6b6b;
+      --ok:#6ef1a8;
+      --warn:#ffd166;
+    }
+    body{margin:0;font-family: "Noto Sans TC","Microsoft JhengHei",system-ui,Arial;background:linear-gradient(180deg,#020406 0%, #071015 60%);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;}
+    /* themes: light, monitor-green, night-vision */
+    body.light{
+      --accent:#007b7b; --accent-2:#055353; --bg:#f7fbfb; --card:#ffffff; --muted:#55666b; --text:#102024; background:linear-gradient(180deg,#f7fbfb 0%, #eef4f4 60%);
+    }
+    body.monitor{
+      --accent:#00ff8a; --accent-2:#00cc66; --bg:#03150a; --card:#06160d; --muted:#8fd8b6; --text:#dfffe6; background:linear-gradient(180deg,#00140a 0%, #021d12 60%);
+    }
+    body.nv { /* night vision / military */
+      --accent:#7cff00; --accent-2:#4fb200; --bg:#081006; --card:#071005; --muted:#9db68a; --text:#dff3c7; background:linear-gradient(180deg,#020601 0%, #06100a 60%);
+    }
+
+    .container{width:calc(100% - 40px);max-width:var(--maxw);margin:0 auto}
+    a{color:inherit;text-decoration:none}
+    button{font-family:inherit}
+
+    /* ================== Header ================== */
+    header{position:fixed;top:0;left:0;right:0;z-index:1200;backdrop-filter: blur(6px);background:linear-gradient(180deg, rgba(2,6,8,0.8), rgba(2,6,8,0.15));padding:10px 0;transition:box-shadow var(--transition)}
+    header.scrolled{box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    .navwrap{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .logo{font-weight:900;color:var(--accent);font-size:1.2rem;letter-spacing:0.6px}
+    nav ul{display:flex;gap:12px;align-items:center;list-style:none;margin:0;padding:0}
+    nav a.navlink{padding:8px 10px;border-radius:8px;color:var(--text);font-weight:700;opacity:0.95;transition:all var(--transition)}
+    nav a.navlink.active{color:var(--accent);box-shadow:0 2px 12px rgba(0,240,240,0.06);transform:translateY(-2px)}
+    .controls{display:flex;gap:10px;align-items:center}
+    .themeBtn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent);padding:8px 12px;border-radius:999px;cursor:pointer}
+    .styleSelect{background:var(--card);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:10px;color:var(--muted);cursor:pointer}
+    .hamburger{display:none;flex-direction:column;gap:5px;padding:8px;border-radius:8px;cursor:pointer}
+    .hamburger span{width:22px;height:2px;background:var(--accent);display:block;border-radius:2px}
+
+    @media (max-width:980px){
+      nav ul{position:fixed;top:68px;right:12px;flex-direction:column;background:var(--card);padding:12px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.6);transform:translateX(110%);transition:transform .28s}
+      nav ul.open{transform:translateX(0)}
+      .hamburger{display:flex}
+    }
+
+    /* ================== Main / Hero ================== */
+    main{padding-top:78px}
+    .hero{min-height:56vh;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:48px 0}
+    .hero-left{max-width:720px}
+    .eyebrow{display:inline-block;padding:6px 10px;border-radius:999px;background:linear-gradient(90deg, rgba(0,240,240,0.06), rgba(0,179,179,0.04));color:var(--accent);font-weight:800;margin-bottom:14px}
+    h1{font-size:2.6rem;margin:8px 0 12px;color:var(--accent);letter-spacing:0.6px}
+    p.lead{color:var(--muted);margin:0 0 20px;line-height:1.6}
+    .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{background:var(--accent);color:#001;padding:10px 14px;border-radius:10px;border:none;font-weight:800;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+
+    .hero-right{flex:1;min-height:260px;display:flex;align-items:center;justify-content:center}
+    .hero-panel{width:100%;max-width:520px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:16px;padding:18px;border:1px solid rgba(255,255,255,0.04)}
+    .muted{color:var(--muted)}
+
+    /* ================== Page sections (SPA) ================== */
+    .page{display:none;padding:36px 0}
+    .page.active{display:block;animation:fadeIn .42s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    .section-title{font-size:1.2rem;color:var(--accent);margin-bottom:14px;font-weight:800}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+
+    /* ================== Solutions / Cards ================== */
+    .solutions-wrap{display:flex;gap:20px;flex-wrap:wrap;align-items:stretch}
+    .sol-card{flex:1 1 300px;background:var(--card);border-radius:var(--radius);padding:18px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(0,0,0,0.35);transition:transform .28s,box-shadow .28s}
+    .sol-card:hover{transform:translateY(-8px);box-shadow:0 20px 50px rgba(0,240,240,0.05)}
+    .sol-head{display:flex;gap:10px;align-items:center}
+    .sol-icon{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:900;color:#001}
+    .sol-title{font-weight:800;font-size:1.05rem}
+    .sol-desc{color:var(--muted);margin-top:10px;line-height:1.5}
+    .sol-actions{display:flex;gap:8px;margin-top:12px}
+    .sol-detail{margin-top:14px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02);display:none}
+    .sol-detail.open{display:block}
+
+    /* ================== Dashboard ================== */
+    .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:20px}
+    .dash-card{background:var(--card);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .dash-title{color:var(--accent);font-weight:800;margin-bottom:10px}
+    .dash-num{font-size:1.6rem;font-weight:900}
+    .status-light{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px}
+    .light-green{background:var(--ok)}
+    .light-yellow{background:var(--warn)}
+    .light-red{background:var(--danger)}
+
+    #worldMap { width:100%; height:420px; background: radial-gradient(circle at center, #001820 0%, #000 100%); position:relative; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.03) }
+    .node { position:absolute; width:12px; height:12px; background:var(--accent); border-radius:50%; box-shadow:0 0 10px rgba(0,240,240,0.18); transform:translate(-50%,-50%); cursor:pointer; }
+    .node.pulse { animation:pulse 2s infinite; }
+    @keyframes pulse { 0% { transform:translate(-50%,-50%) scale(1); opacity:1 } 50% { transform:translate(-50%,-50%) scale(1.6); opacity:0.6 } 100% { transform:translate(-50%,-50%) scale(1); opacity:1 } }
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:2000;padding:20px}
+    .modal{width:100%;max-width:980px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:12px;padding:18px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+    .modal.show{display:block}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .modal-tabs{display:flex;gap:8px}
+    .tab{padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+    .tab.active{background:linear-gradient(90deg, rgba(0,240,240,0.06), rgba(0,179,179,0.03));color:var(--accent);font-weight:800}
+    .modal-body{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+    .modal-chart-card{background:var(--card);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .events-list{max-height:320px;overflow:auto;padding:8px;background:var(--card);border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .event-item{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.02);font-size:0.95rem}
+    .sla{display:flex;flex-direction:column;gap:6px;padding:12px;background:#06101b;border-radius:8px;color:var(--muted);font-size:0.95rem}
+
+    /* Quiz area (reused) */
+    #quizWrap{max-width:880px;margin:0 auto;background:var(--card);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    #qTitle{font-weight:800;color:var(--accent);margin-bottom:6px}
+    .opts{display:flex;flex-direction:column;gap:10px}
+  .opt{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px;border-radius:8px;cursor:pointer;text-align:left;transition:all .18s;color: #ffffff;}
+    .opt.correct{background:linear-gradient(90deg, rgba(0,240,240,0.08), rgba(0,179,179,0.04));border-color:var(--accent)}
+    .opt.wrong{background:linear-gradient(90deg, rgba(255,120,100,0.04), rgba(255,80,80,0.02));border-color:rgba(255,80,80,0.35)}
+
+    footer{padding:28px 0;text-align:center;color:var(--muted);margin-top:24px}
+    #toTop{position:fixed;right:18px;bottom:18px;background:var(--accent);color:#001;border:none;padding:10px 12px;border-radius:8px;cursor:pointer;display:none}
+
+    @media (max-width:900px){
+      .hero{flex-direction:column;align-items:flex-start;padding:28px 0}
+      h1{font-size:1.8rem}
+      .hero-right{display:none}
+      .modal-body{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body class="nv">
+  <header id="topHeader">
+    <div class="container navwrap">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="logo">CyberShield</div>
+        <nav>
+          <ul id="navList" aria-label="主選單">
+            <li><a class="navlink active" href="#home" data-page="home">首頁</a></li>
+            <li><a class="navlink" href="#solutions" data-page="solutions">解決方案</a></li>
+            <li><a class="navlink" href="#learn" data-page="learn">學習中心</a></li>
+            <li><a class="navlink" href="#dashboard" data-page="dashboard">監控儀表板</a></li>
+            <li><a class="navlink" href="#quiz" data-page="quiz">互動測驗</a></li>
+            <li><a class="navlink" href="#contact" data-page="contact">聯絡</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="controls">
+        <select id="styleSelect" class="styleSelect" title="選擇主題樣式">
+          <option value="nv">深色 / 軍事監控 (預設)</option>
+          <option value="default">深色 / 科技</option>
+          <option value="monitor">監控綠</option>
+          <option value="light">淺色</option>
+        </select>
+        <button id="themeToggle" class="themeBtn" aria-pressed="false">🌙 暗色</button>
+        <div class="hamburger" id="burger" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+    <!-- HOME -->
+    <section id="home" class="page active">
+      <div class="hero">
+        <div class="hero-left">
+          <div class="eyebrow">CyberShield — 全球資安監控</div>
+          <h1>軍事級的 DDoS 與應用層安全 — 24/7 即時防護</h1>
+          <p class="lead">我們結合 Anycast、BGP 導流、清洗中心、WAF 與智慧行為分析，為企業提供可擴展、低延遲且可視化的資安防護平台。</p>
+          <div class="hero-ctas">
+            <button class="btn" data-nav="#dashboard">前往儀表板</button>
+            <button class="btn ghost" data-nav="#solutions">查看方案</button>
+          </div>
+
+          <div style="margin-top:18px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+            <div class="sol-card" style="padding:12px;">
+              <div style="font-weight:800;color:var(--accent)">我們的承諾</div>
+              <div style="color:var(--muted);margin-top:8px">可用性優先、事件透明、快速回應。</div>
+            </div>
+            <div class="sol-card" style="padding:12px;">
+              <div style="font-weight:800;color:var(--accent)">技術亮點</div>
+              <div style="color:var(--muted);margin-top:8px">Anycast、BGP、WAF、Bot 管理、SIEM 整合。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="hero-panel">
+            <strong>快速檢視：全球狀態</strong>
+            <p class="muted" style="margin-top:8px">即時流量、攻擊次數與系統健康（模擬資料）</p>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <div style="flex:1">
+                <div style="font-size:12px;color:var(--muted)">當前流量</div>
+                <div style="font-weight:900;font-size:1.2rem" id="hdrTraffic">0 Gbps</div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:12px;color:var(--muted)">封鎖</div>
+                <div style="font-weight:900;font-size:1.2rem" id="hdrBlocks">0</div>
+              </div>
+            </div>
+            <div style="margin-top:12px;color:var(--muted);font-size:0.9rem">點選「前往儀表板」以檢視各節點詳細狀態（含彈窗）。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Sec -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-top:24px">
+        <div class="learn-card" style="padding:18px;">
+          <h3 class="section-title">什麼是資訊安全？（Why Security Matters）</h3>
+          <p style="color:var(--muted)">資訊安全不僅是防火牆與加密，而是包含系統的「機密性、完整性、可用性（CIA）」，以及事件偵測、回應與持續改善。現今攻擊形態複雜且自動化，企業需結合網路、應用與作業層面的綜合防護。</p>
+
+          <h4 style="margin-top:12px;color:var(--accent)">常見攻擊手法</h4>
+          <ul style="color:var(--muted);line-height:1.6">
+            <li><strong>DDoS：</strong>分散式阻斷服務，淹沒頻寬或資源。</li>
+            <li><strong>Web 攻擊：</strong>SQLi、XSS、CSRF，攻擊應用層漏洞。</li>
+            <li><strong>API 濫用：</strong>憑證盜用、速率超載、業務邏輯濫用。</li>
+            <li><strong>社交工程：</strong>釣魚郵件、內部人員被滲透。</li>
+            <li><strong>APT：</strong>長期滲透、資料竊取與滲透式操控。</li>
+          </ul>
+        </div>
+
+        <div class="learn-card" style="padding:18px;">
+          <h3 class="section-title">我們的三大防線</h3>
+          <ol style="color:var(--muted);line-height:1.6">
+            <li><strong>邊界清洗：</strong>Anycast + ISP 級清洗（Clean-Pipe）。</li>
+            <li><strong>應用防護：</strong>WAF + Bot 管理 + API 保護。</li>
+            <li><strong>檢測與回應：</strong>SIEM + 攻擊指標（Threat Intel）+ SOC 運作。</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOLUTIONS -->
+    <section id="solutions" class="page">
+      <h3 class="section-title">我們的解決方案</h3>
+      <div class="solutions-wrap">
+        <!-- Origin Protection -->
+        <article class="sol-card" data-key="origin">
+          <div class="sol-head">
+            <div class="sol-icon">OP</div>
+            <div>
+              <div class="sol-title">Origin Protection</div>
+              <div style="color:var(--muted);font-size:0.95rem">當遭受大流量攻擊時，保護原始伺服器</div>
+            </div>
+          </div>
+          <p class="sol-desc">BGP 導流 / GRE 隧道＋清洗中心，確保原站可回復，並提供自動偵測與攔截。</p>
+          <div class="sol-actions">
+            <button class="btn detailBtn" data-target="origin">展開細節</button>
+            <button class="btn ghost" onclick="alert('聯絡我們以瞭解方案與 SLA')">諮詢方案</button>
+          </div>
+          <div class="sol-detail" id="origin-detail">
+            <strong>功能亮點：</strong>
+            <ul style="margin:8px 0;color:var(--muted);line-height:1.6">
+              <li>自動攻擊偵測與 BGP 導流</li>
+              <li>清洗中心 (Scrubbing) + 協定層過濾 (L3/L4)</li>
+              <li>SLA：可用性（%）、恢復時間目標（RTO）等</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Application Protection -->
+        <article class="sol-card" data-key="application">
+          <div class="sol-head">
+            <div class="sol-icon">AP</div>
+            <div>
+              <div class="sol-title">Application Protection</div>
+              <div style="color:var(--muted);font-size:0.95rem">WAF、API 保護與 Bot 管理</div>
+            </div>
+          </div>
+          <p class="sol-desc">結合自定義 WAF 規則、速率限制、驗證閘道與行為分析，降低假陽性影響真實用戶。</p>
+          <div class="sol-actions">
+            <button class="btn detailBtn" data-target="application">展開細節</button>
+            <button class="btn ghost" onclick="alert('我們提供測試與規則調校服務')">諮詢方案</button>
+          </div>
+          <div class="sol-detail" id="application-detail">
+            <strong>功能亮點：</strong>
+            <ul style="margin:8px 0;color:var(--muted);line-height:1.6">
+              <li>ModSecurity 規則、正則與行為式規則</li>
+              <li>Bot 分類、速率限制與 CAPTCHA</li>
+              <li>日誌與 SIEM 異動串接</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Threat Intel -->
+        <article class="sol-card" data-key="threat">
+          <div class="sol-head">
+            <div class="sol-icon">TI</div>
+            <div>
+              <div class="sol-title">Threat Intelligence</div>
+              <div style="color:var(--muted);font-size:0.95rem">即時攻擊資料與黑名單同步</div>
+            </div>
+          </div>
+          <p class="sol-desc">整合內外部情資來源，自動下發封鎖名單、IP reputation 與惡意指標。</p>
+          <div class="sol-actions">
+            <button class="btn detailBtn" data-target="threat">展開細節</button>
+            <button class="btn ghost" onclick="alert('情資需求可客製化')">諮詢方案</button>
+          </div>
+          <div class="sol-detail" id="threat-detail">
+            <strong>功能亮點：</strong>
+            <ul style="margin:8px 0;color:var(--muted);line-height:1.6">
+              <li>IP / ASN / Domain 黨單同步</li>
+              <li>流量行為指標 (Botnet fingerprint)</li>
+              <li>可輸出至 SIEM 或 API 整合</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Incident Response -->
+        <article class="sol-card" data-key="ir">
+          <div class="sol-head">
+            <div class="sol-icon">IR</div>
+            <div>
+              <div class="sol-title">Incident Response</div>
+              <div style="color:var(--muted);font-size:0.95rem">SOC 支援與事件回復</div>
+            </div>
+          </div>
+          <p class="sol-desc">24/7 SOC、事件回應 (IR) 與媒合法務/復原團隊，提供稽核報告與根本原因分析。</p>
+          <div class="sol-actions">
+            <button class="btn detailBtn" data-target="ir">展開細節</button>
+            <button class="btn ghost" onclick="alert('需要定制 IR 流程請聯絡')">諮詢方案</button>
+          </div>
+          <div class="sol-detail" id="ir-detail">
+            <strong>功能亮點：</strong>
+            <ul style="margin:8px 0;color:var(--muted);line-height:1.6">
+              <li>事件通報、暫態封鎖與恢復方案</li>
+              <li>事後報告 (Forensic) 與改善建議</li>
+              <li>演練與滲透測試服務</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- LEARN -->
+    <section id="learn" class="page">
+      <h3 class="section-title">資安學習中心</h3>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
+        <div class="learn-card">
+          <h4 style="margin:0 0 8px">資安指標與圖表</h4>
+          <p class="muted">下列圖表示意常見的監控內容（模擬資料，可於 Dashboard 與 Modal 中查看節點專屬資料）。</p>
+          <canvas id="learnAttackChart" style="margin-top:12px"></canvas>
+        </div>
+
+        <div class="learn-card">
+          <h4 style="margin:0 0 8px">實務建議</h4>
+          <ul style="color:var(--muted);line-height:1.6">
+            <li>啟用 MFA 並使用最小權限原則</li>
+            <li>設置 WAF 規則並定期調優</li>
+            <li>定期演練 Incident Response</li>
+            <li>將日誌送到 SIEM 與長期保存</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="page">
+      <h3 class="section-title">全球防禦狀態儀表板</h3>
+
+      <div class="dash">
+        <div class="dash-card">
+          <div class="dash-title">當前總流量</div>
+          <div class="dash-num" id="trafficNum">0 Gbps</div>
+          <div class="muted" style="font-size:12px;margin-top:6px">近 1 小時平均</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-title">今日攻擊封鎖</div>
+          <div class="dash-num" id="attackNum">0</div>
+          <div class="muted" style="font-size:12px;margin-top:6px">封鎖事件次數</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-title">清洗率</div>
+          <div class="dash-num" id="cleanNum">0%</div>
+          <div class="muted" style="font-size:12px;margin-top:6px">已清洗流量比</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-title">系統狀態</div>
+          <div class="dash-num" id="sysLight"><span class="status-light light-green"></span>穩定</div>
+          <div class="muted" style="font-size:12px;margin-top:6px">監控心跳</div>
+        </div>
+      </div>
+
+      <canvas id="trafficChart" style="max-height:220px"></canvas>
+
+      <div id="worldMap" style="margin-top:18px"></div>
+      <p style="color:var(--muted);font-size:13px;margin-top:10px">點選地圖上的節點查看該節點的「詳細彈窗（Modal）」 — 包含節點即時圖表、事件紀錄與 SLA。</p>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz" class="page">
+      <h3 class="section-title">資安互動測驗（例題）</h3>
+      <div id="quizWrap">
+        <div id="qTitle">測驗題目（共 5 題）</div>
+        <div id="question">按「開始測驗」以開始</div>
+
+        <div class="opts" id="options"></div>
+
+        <div class="controls-quiz" style="margin-top:10px">
+          <button id="startBtn" class="btn">開始測驗</button>
+          <button id="nextBtn" class="btn ghost" style="display:none">下一題</button>
+          <button id="retryBtn" class="btn ghost" style="display:none">重新挑戰</button>
+          <div style="flex:1"></div>
+          <div class="scorebar" style="width:260px">
+            <div class="bar" style="height:12px;background:rgba(255,255,255,0.05);border-radius:999px;overflow:hidden"><i id="barFill" style="display:block;height:100%;width:0;background:var(--accent);transition:width .8s ease;border-radius:inherit"></i></div>
+            <div style="font-size:12px;color:var(--muted);text-align:right;margin-top:6px" id="scoreText">0 / 5</div>
+          </div>
+        </div>
+
+        <div id="resultArea" style="display:none">
+          <div class="result-wrap" style="margin-top:12px;display:flex;gap:12px;align-items:center">
+            <div id="badgeWrap"></div>
+            <div id="finalMsg" style="color:var(--muted)"></div>
+          </div>
+          <div id="explainList" style="margin-top:12px;color:var(--muted)"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="page">
+      <h3 class="section-title">聯絡我們</h3>
+      <p style="text-align:center;color:var(--muted)">有資安需求或想了解產品細節，歡迎來信：<a href="mailto:j0917326812@gmail.com" style="color:var(--accent)">j0917326812@gmail.com</a></p>
+    </section>
+  </main>
+
+  <button id="toTop" aria-label="回到頂部">↑</button>
+
+  <footer>
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div style="color:var(--muted)">© 2025 CyberShield — 全方位資安監控平台</div>
+      <div style="color:var(--muted);font-size:13px">版權所有 • 軍事監控風格示範</div>
+    </div>
+  </footer>
+
+  <!-- Modal backdrop for node details -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div>
+          <div id="modalTitle" style="font-weight:900;color:var(--accent)">節點</div>
+          <div id="modalSub" style="font-size:12px;color:var(--muted)">節點詳細資料</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="modal-tabs" role="tablist" id="modalTabs">
+            <button class="tab active" data-tab="overview">概覽</button>
+            <button class="tab" data-tab="trend">攻擊趨勢</button>
+            <button class="tab" data-tab="sources">攻擊來源</button>
+            <button class="tab" data-tab="resources">系統資源</button>
+          </div>
+          <button id="closeModal" class="btn ghost">關閉</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div>
+          <div id="overviewPanel" class="modal-chart-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:900" id="ovTitle">節點概覽</div>
+                <div style="font-size:12px;color:var(--muted)" id="ovSub">即時狀態與指標</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-weight:900" id="ovTraffic">0 Gbps</div>
+                <div style="font-size:12px;color:var(--muted)">流量</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+              <canvas id="nodeTrendMini"></canvas>
+              <canvas id="nodeSourceMini"></canvas>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <div class="sla">
+                <div style="font-weight:800;color:var(--accent)">SLA</div>
+                <div id="slaUptime">可用性: 99.99%</div>
+                <div id="slaLatency">延遲: 22 ms</div>
+                <div id="slaRTO">RTO: 15 mins</div>
+              </div>
+
+              <div style="flex:1">
+                <div style="font-weight:800;color:var(--accent);margin-bottom:6px">近期事件</div>
+                <div class="events-list" id="modalEvents"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- attack trend (full) -->
+          <div id="trendPanel" class="modal-chart-card" style="display:none;margin-top:12px">
+            <canvas id="nodeTrendBig"></canvas>
+          </div>
+
+          <!-- sources -->
+          <div id="sourcePanel" class="modal-chart-card" style="display:none;margin-top:12px">
+            <canvas id="nodeSourcesBig"></canvas>
+          </div>
+
+          <!-- resources -->
+          <div id="resourcePanel" class="modal-chart-card" style="display:none;margin-top:12px">
+            <canvas id="nodeResourcesChart"></canvas>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <div style="flex:1">
+                <div style="font-size:12px;color:var(--muted)">CPU</div>
+                <div id="resCPU" style="font-weight:900">0%</div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:12px;color:var(--muted)">Memory</div>
+                <div id="resMem" style="font-weight:900">0%</div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:12px;color:var(--muted)">Packet Loss</div>
+                <div id="resPL" style="font-weight:900">0%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="modal-chart-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800;color:var(--accent)">節點資訊</div>
+              <div id="nodeStatus" style="font-size:13px;color:var(--muted)"><span class="status-light light-green"></span>穩定</div>
+            </div>
+
+            <div style="margin-top:8px;color:var(--muted);font-size:13px">
+              <div><strong>位置：</strong><span id="nodeLoc">台北</span></div>
+              <div style="margin-top:6px"><strong>IP：</strong><span id="nodeIP">203.0.113.1</span></div>
+              <div style="margin-top:6px"><strong>POP：</strong><span id="nodePOP">POPTW-02</span></div>
+            </div>
+
+            <div style="margin-top:12px">
+              <div style="font-weight:800;color:var(--accent);margin-bottom:6px">快速操作</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn" id="btnMute">暫時封鎖 IP</button>
+                <button class="btn ghost" id="btnThrottle">啟用速率限制</button>
+                <button class="btn ghost" id="btnEscalate">升級為緊急導流 (BGP)</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="modal-chart-card">
+            <div style="font-weight:800;color:var(--accent)">SLA 總結</div>
+            <div style="color:var(--muted);margin-top:8px;font-size:13px">
+              <div><strong>可用性：</strong><span id="slaAvail">99.99%</span></div>
+              <div style="margin-top:6px"><strong>最大允許恢復時間：</strong><span id="slaAllowed">30 mins</span></div>
+              <div style="margin-top:6px"><strong>最後一次違約：</strong><span id="slaBreach">無</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------
+    // SPA Navigation + header
+    // -----------------------------
+    const navLinks = document.querySelectorAll('.navlink');
+    const pages = document.querySelectorAll('.page');
+    const header = document.getElementById('topHeader');
+    const navUL = document.getElementById('navList');
+
+    function goTo(hashOrPage){
+      const id = (hashOrPage || location.hash || '#home').replace('#','');
+      pages.forEach(p => p.classList.toggle('active', p.id === id));
+      navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('data-page') === id));
+      window.scrollTo({top:0,behavior:'smooth'});
+      // close mobile if open
+      if(navUL.classList.contains('open')) navUL.classList.remove('open');
+      // update hash without scrolling jump
+      if(location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+    }
+
+    navLinks.forEach(a=>{
+      a.addEventListener('click', e=>{
+        e.preventDefault();
+        goTo(a.getAttribute('data-page'));
+      });
+    });
+
+    // hero CTA
+    document.querySelectorAll('[data-nav]').forEach(btn=>{
+      btn.addEventListener('click', ()=> goTo(btn.getAttribute('data-nav')));
+    });
+
+    // mobile
+    const burger = document.getElementById('burger');
+    burger.addEventListener('click', ()=> navUL.classList.toggle('open'));
+
+    window.addEventListener('hashchange', ()=> goTo(location.hash));
+
+    // header shadow on scroll
+    window.addEventListener('scroll', ()=> {
+      header.classList.toggle('scrolled', window.scrollY > 20);
+      document.getElementById('toTop').style.display = window.scrollY > 240 ? 'block' : 'none';
+    });
+
+    document.getElementById('toTop').addEventListener('click', ()=> window.scrollTo({top:0,behavior:'smooth'}));
+
+    // -----------------------------
+    // Theme / Style selector
+    // -----------------------------
+    const styleSelect = document.getElementById('styleSelect');
+    styleSelect.addEventListener('change', (e)=>{
+      document.body.classList.remove('light','monitor','nv');
+      const v = e.target.value;
+      if(v === 'light') document.body.classList.add('light');
+      else if(v === 'monitor') document.body.classList.add('monitor');
+      else if(v === 'nv') document.body.classList.add('nv');
+      else document.body.classList.remove('light','monitor','nv');
+    });
+
+    const themeBtn = document.getElementById('themeToggle');
+    themeBtn.addEventListener('click', ()=>{
+      const isLight = document.body.classList.toggle('light');
+      themeBtn.textContent = isLight ? '🌞 淺色' : '🌙 暗色';
+      styleSelect.value = isLight ? 'light' : 'nv';
+    });
+
+    // -----------------------------
+    // Solutions detail toggles
+    // -----------------------------
+    document.querySelectorAll('.detailBtn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('data-target') + '-detail';
+        const el = document.getElementById(id);
+        el.classList.toggle('open');
+        btn.textContent = el.classList.contains('open') ? '收起細節' : '展開細節';
+      });
+    });
+
+    // -----------------------------
+    // Quiz logic (copied & reused)
+    // -----------------------------
+    const quizData = [
+      {q:"下列何者不是資訊安全三要素（CIA）？", opts:["機密性 (Confidentiality)","完整性 (Integrity)","可用性 (Availability)","效能性 (Performance)"], a:3, expl:"CIA 為機密性、完整性、可用性。"},
+      {q:"下列哪一種屬於社交工程攻擊？", opts:["暴力破解","釣魚郵件 (Phishing)","DDoS 攻擊","SQL Injection"], a:1, expl:"釣魚郵件屬社交工程。"},
+      {q:"APT（進階持續性威脅）的典型特徵為何？", opts:["短期高頻攻擊","長期隱密滲透","公開且易偵測的攻擊","僅攻擊弱小目標"], a:1, expl:"APT 常長期隱密滲透高價值目標。"},
+      {q:"在 PDCA（持續改善）循環中，C 代表哪個步驟？", opts:["Control (控制)","Check (檢查)","Create (建立)","Change (變更)"], a:1, expl:"PDCA 中 C 為 Check（檢查）。"},
+      {q:"為確保資料完整性，下列哪項技術最直接可用？", opts:["資料壓縮","資料加密","雜湊檢查 (Hash)","資料分段"], a:2, expl:"雜湊可檢測資料是否被竄改。"}
+    ];
+
+    let qIdx = 0, qScore = 0, answered = false;
+    const qEl = document.getElementById('question');
+    const optsEl = document.getElementById('options');
+    const startBtn = document.getElementById('startBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const retryBtn = document.getElementById('retryBtn');
+    const barFill = document.getElementById('barFill');
+    const scoreText = document.getElementById('scoreText');
+    const resultArea = document.getElementById('resultArea');
+    const badgeWrap = document.getElementById('badgeWrap');
+    const finalMsg = document.getElementById('finalMsg');
+    const explainList = document.getElementById('explainList');
+
+    function renderQ(){
+      const it = quizData[qIdx];
+      qEl.textContent = `${qIdx+1}. ${it.q}`;
+      optsEl.innerHTML = '';
+      it.opts.forEach((o,i)=>{
+        const b = document.createElement('button');
+        b.className='opt';
+        b.textContent = o;
+        b.onclick = ()=> selectOpt(b,i,it.a,it.expl);
+        optsEl.appendChild(b);
+      });
+      answered = false;
+      nextBtn.style.display = 'none';
+    }
+
+    function selectOpt(btn, choice, ans, expl){
+      if(answered) return;
+      answered = true;
+      Array.from(optsEl.children).forEach((c,idx)=>{
+        c.classList.remove('correct','wrong');
+        if(idx === ans) c.classList.add('correct');
+        if(idx === choice && idx !== ans) c.classList.add('wrong');
+      });
+      if(choice === ans) qScore++;
+      const pct = Math.round((qScore / quizData.length) * 100);
+      barFill.style.width = pct + '%';
+      scoreText.textContent = `${qScore} / ${quizData.length}`;
+      nextBtn.style.display = 'inline-block';
+      const e = document.createElement('div'); e.style.marginTop='10px'; e.style.color='var(--muted)';
+      e.innerHTML = `<strong>解析：</strong> ${expl}`;
+      const prev = document.querySelector('#options + .explain');
+      if(prev) prev.remove();
+      e.className='explain';
+      optsEl.insertAdjacentElement('afterend', e);
+    }
+
+    startBtn.addEventListener('click', ()=>{
+      qIdx = 0; qScore = 0; barFill.style.width='0%'; scoreText.textContent = `0 / ${quizData.length}`;
+      renderQ();
+      startBtn.style.display='none';
+      retryBtn.style.display='none';
+    });
+
+    nextBtn.addEventListener('click', ()=>{
+      if(!answered) return;
+      qIdx++;
+      if(qIdx < quizData.length) renderQ();
+      else finishQuiz();
+    });
+
+    retryBtn.addEventListener('click', ()=>{
+      qIdx = 0; qScore = 0; answered = false;
+      startBtn.style.display='inline-block';
+      retryBtn.style.display='none';
+      nextBtn.style.display='none';
+      qEl.textContent = '按「開始測驗」以再次挑戰';
+      optsEl.innerHTML='';
+      barFill.style.width='0%';
+      scoreText.textContent = `0 / ${quizData.length}`;
+      resultArea.style.display='none';
+      explainList.innerHTML='';
+      badgeWrap.innerHTML='';
+    });
+
+    function finishQuiz(){
+      qEl.textContent = `測驗完成： ${qScore} / ${quizData.length}`;
+      optsEl.innerHTML='';
+      resultArea.style.display='block';
+      const perc = Math.round((qScore / quizData.length) * 100);
+      barFill.style.width = perc + '%';
+      scoreText.textContent = `${qScore} / ${quizData.length}`;
+      badgeWrap.innerHTML = '';
+      const badge = document.createElement('div'); badge.className='badge';
+      let cls = 'bronze', txt='🥉 銅級';
+      if(qScore === quizData.length){ cls='diamond'; txt='💠 鑽石級' }
+      else if(qScore >= quizData.length-1){ cls='gold'; txt='🥇 黃金級' }
+      else if(qScore >= 2){ cls='silver'; txt='🥈 白銀級' }
+      badge.classList.add(cls);
+      badge.innerHTML = `<div style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px"><div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#7cf0ff,#6ef1ff);color:#013;display:flex;align-items:center;justify-content:center;font-weight:900">${txt.split(' ')[0]}</div><div style="font-weight:700">${txt}<div style="font-size:12px;color:var(--muted)">${qScore} / ${quizData.length}</div></div></div>`;
+      badgeWrap.appendChild(badge);
+      finalMsg.textContent = qScore >= 4 ? '💪 優秀！你對資安重點掌握良好。' : '🧠 再加油，可以重試或複習資安重點。';
+      explainList.innerHTML = '';
+      quizData.forEach((it,i)=>{
+        const d = document.createElement('div'); d.style.marginTop='8px'; d.style.color='var(--muted)';
+        d.innerHTML = `<strong>${i+1}.</strong> ${it.q} <br><em>答案：</em> ${it.opts[it.a]} <br><strong>解析：</strong> ${it.expl}`;
+        explainList.appendChild(d);
+      });
+      retryBtn.style.display='inline-block';
+      nextBtn.style.display='none';
+    }
+
+    // -----------------------------
+    // Dashboard simulation & Chart.js setup
+    // -----------------------------
+    const trafficNum = document.getElementById('trafficNum');
+    const attackNum = document.getElementById('attackNum');
+    const cleanNum = document.getElementById('cleanNum');
+    const sysLight = document.getElementById('sysLight');
+    const hdrTraffic = document.getElementById('hdrTraffic');
+    const hdrBlocks = document.getElementById('hdrBlocks');
+
+    // initial data arrays
+    let globalTrafficData = Array.from({length:30}, ()=> +(Math.random()*2 + 1).toFixed(2));
+    let globalAttackCount = 0;
+
+    // traffic chart
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const trafficChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array(30).fill(''),
+        datasets: [{
+          label: '流量 (Gbps)',
+          data: globalTrafficData,
+          tension: 0.35,
+          borderWidth: 2,
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#00f0f0',
+          pointRadius: 0
+        }]
+      },
+      options: {
+        plugins:{legend:{display:false}},
+        scales:{x:{display:false}, y:{beginAtZero:true}}
+      }
+    });
+
+    // learning chart
+    const learnCtx = document.getElementById('learnAttackChart').getContext('2d');
+    const learnChart = new Chart(learnCtx, {
+      type: 'bar',
+      data: {
+        labels:['DDoS','Web','API','Phishing','APT'],
+        datasets:[{
+          label:'攻擊類型模擬',
+          data: [45,30,20,18,12],
+          borderRadius:6,
+          borderSkipped:false
+        }]
+      },
+      options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    });
+
+    // update simulation interval
+    setInterval(()=> {
+      const next = +(Math.random()*2 + 0.5).toFixed(2);
+      globalTrafficData.push(next); globalTrafficData.shift();
+      trafficChart.data.datasets[0].data = globalTrafficData;
+      trafficChart.update();
+
+      const totalTraffic = globalTrafficData.reduce((a,b)=>a+b,0)/globalTrafficData.length;
+      trafficNum.textContent = totalTraffic.toFixed(2) + ' Gbps';
+      hdrTraffic.textContent = totalTraffic.toFixed(2) + ' Gbps';
+
+      const newAttacks = Math.floor(Math.random()*6);
+      globalAttackCount += newAttacks;
+      attackNum.textContent = globalAttackCount;
+      hdrBlocks.textContent = globalAttackCount;
+
+      cleanNum.textContent = (98 + Math.random()*2).toFixed(2) + '%';
+
+      const rand = Math.random();
+      if(rand > 0.85) sysLight.innerHTML = '<span class="status-light light-yellow"></span>警戒';
+      else if(rand < 0.06) sysLight.innerHTML = '<span class="status-light light-red"></span>異常';
+      else sysLight.innerHTML = '<span class="status-light light-green"></span>穩定';
+    }, 2000);
+
+    // -----------------------------
+    // World map nodes (click -> modal)
+    // -----------------------------
+    const world = document.getElementById('worldMap');
+    const nodes = [
+      {id:'tw', name:'台北', x:74, y:28, ip:'203.0.113.11', pop:'TW-POP-01'},
+      {id:'jp', name:'東京', x:80, y:22, ip:'203.0.113.21', pop:'JP-POP-03'},
+      {id:'sg', name:'新加坡', x:78, y:62, ip:'203.0.113.31', pop:'SG-POP-02'},
+      {id:'au', name:'雪梨', x:86, y:80, ip:'203.0.113.41', pop:'AU-POP-01'},
+      {id:'ln', name:'倫敦', x:36, y:36, ip:'203.0.113.51', pop:'EU-POP-01'},
+      {id:'fr', name:'法蘭克福', x:41, y:42, ip:'203.0.113.61', pop:'EU-POP-02'},
+      {id:'la', name:'洛杉磯', x:14, y:58, ip:'203.0.113.71', pop:'US-POP-01'},
+      {id:'ny', name:'紐約', x:24, y:46, ip:'203.0.113.81', pop:'US-POP-02'}
+    ];
+
+    // create nodes
+    nodes.forEach(n=>{
+      const node = document.createElement('div');
+      node.className = 'node pulse';
+      node.style.left = n.x + '%';
+      node.style.top = n.y + '%';
+      node.title = n.name;
+      node.dataset.id = n.id;
+      world.appendChild(node);
+
+      // tooltip using mousemove
+      node.addEventListener('mousemove', (e)=>{
+        showTooltip(e.pageX+12, e.pageY+12, `${n.name} • ${n.pop}`);
+      });
+      node.addEventListener('mouseleave', hideTooltip);
+
+      node.addEventListener('click', (e)=>{
+        openNodeModal(n);
+      });
+    });
+
+    // decorative lines canvas
+    const canvas = document.createElement('canvas');
+    function adjustCanvasSize(){
+      canvas.width = world.clientWidth;
+      canvas.height = world.clientHeight;
+    }
+    adjustCanvasSize();
+    canvas.style.position = 'absolute';
+    canvas.style.top = 0;
+    canvas.style.left = 0;
+    world.appendChild(canvas);
+    window.addEventListener('resize', ()=> {
+      adjustCanvasSize();
+    });
+
+    const ctxLine = canvas.getContext('2d');
+    function drawLines(){
+      ctxLine.clearRect(0,0,canvas.width,canvas.height);
+      nodes.forEach(a=>{
+        const b = nodes[Math.floor(Math.random()*nodes.length)];
+        ctxLine.beginPath();
+        ctxLine.moveTo(a.x/100*canvas.width, a.y/100*canvas.height);
+        ctxLine.lineTo(b.x/100*canvas.width, b.y/100*canvas.height);
+        ctxLine.strokeStyle = 'rgba(124,255,255,'+(Math.random()*0.2+0.04)+')';
+        ctxLine.lineWidth = 1;
+        ctxLine.stroke();
+      });
+    }
+    setInterval(drawLines, 700);
+
+    // tooltip
+    const tooltip = document.createElement('div');
+    tooltip.id = 'tooltip';
+    tooltip.style.position = 'fixed';
+    tooltip.style.padding = '6px 10px';
+    tooltip.style.background = 'rgba(0,0,0,0.8)';
+    tooltip.style.border = '1px solid rgba(0,240,240,0.12)';
+    tooltip.style.color = 'var(--accent)';
+    tooltip.style.borderRadius = '6px';
+    tooltip.style.fontSize = '13px';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.opacity = 0;
+    tooltip.style.transition = 'opacity .12s';
+    document.body.appendChild(tooltip);
+    function showTooltip(x,y,html){
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+      tooltip.innerHTML = html;
+      tooltip.style.opacity = 1;
+    }
+    function hideTooltip(){
+      tooltip.style.opacity = 0;
+    }
+
+    // -----------------------------
+    // Modal + charts for node
+    // -----------------------------
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSub = document.getElementById('modalSub');
+    const modalEvents = document.getElementById('modalEvents');
+    const nodeLoc = document.getElementById('nodeLoc');
+    const nodeIP = document.getElementById('nodeIP');
+    const nodePOP = document.getElementById('nodePOP');
+    const nodeStatus = document.getElementById('nodeStatus');
+    const ovTraffic = document.getElementById('ovTraffic');
+    const ovTitle = document.getElementById('ovTitle');
+    const ovSub = document.getElementById('ovSub');
+    const slaUptime = document.getElementById('slaUptime');
+    const slaLatency = document.getElementById('slaLatency');
+    const slaRTO = document.getElementById('slaRTO');
+    const slaAvail = document.getElementById('slaAvail');
+    const slaAllowed = document.getElementById('slaAllowed');
+    const slaBreach = document.getElementById('slaBreach');
+
+    // charts inside modal
+    let nodeTrendMiniChart, nodeSourceMiniChart, nodeTrendBigChart, nodeSourcesBigChart, nodeResourcesChart;
+
+    // helper: generate simulated time series
+    function genSeries(len, base, vol){
+      const arr = [];
+      let v = base;
+      for(let i=0;i<len;i++){
+        v = Math.max(0, v + (Math.random()-0.45)*vol);
+        arr.push(+v.toFixed(2));
+      }
+      return arr;
+    }
+
+    // open modal with data for a node
+    function openNodeModal(node){
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden','false');
+      modalTitle.textContent = `節點 — ${node.name}`;
+      modalSub.textContent = `${node.pop} • IP ${node.ip}`;
+      nodeLoc.textContent = node.name;
+      nodeIP.textContent = node.ip;
+      nodePOP.textContent = node.pop;
+
+      // set status randomly
+      const chance = Math.random();
+      if(chance > 0.9) { nodeStatus.innerHTML = '<span class="status-light light-yellow"></span>警戒'; }
+      else if(chance < 0.08) { nodeStatus.innerHTML = '<span class="status-light light-red"></span>異常'; }
+      else { nodeStatus.innerHTML = '<span class="status-light light-green"></span>穩定'; }
+
+      // populate SLA (simulate)
+      slaUptime.textContent = (99.95 + Math.random()*0.04).toFixed(4) + '%';
+      slaLatency.textContent = (10 + Math.floor(Math.random()*40)) + ' ms';
+      slaRTO.textContent = (5 + Math.floor(Math.random()*25)) + ' mins';
+      slaAvail.textContent = slaUptime.textContent;
+      slaAllowed.textContent = slaRTO.textContent;
+      slaBreach.textContent = Math.random()>0.95 ? '30-2025-09-12' : '無';
+
+      // events
+      modalEvents.innerHTML = '';
+      const evCnt = 6 + Math.floor(Math.random()*6);
+      for(let i=0;i<evCnt;i++){
+        const it = document.createElement('div');
+        it.className = 'event-item';
+        const t = new Date(Date.now() - i*60000* (1+Math.floor(Math.random()*10)));
+        it.innerHTML = `<strong>[${t.toLocaleTimeString()}]</strong> ${['流量峰值','HTTP Flood','速率限制啟用','IP 暫封','健康檢查失敗'][Math.floor(Math.random()*5)]} • 詳情: ${Math.floor(Math.random()*9000)} 封包`;
+        modalEvents.appendChild(it);
+      }
+
+      // small charts: trend mini & sources mini
+      const trendMiniEl = document.getElementById('nodeTrendMini').getContext('2d');
+      const sourceMiniEl = document.getElementById('nodeSourceMini').getContext('2d');
+
+      const trendData = genSeries(20, Math.random()*5 + 1, 1.8);
+      const sourceData = [Math.floor(Math.random()*50)+10, Math.floor(Math.random()*30)+5, Math.floor(Math.random()*20)+3, Math.floor(Math.random()*10)];
+
+      if(nodeTrendMiniChart) nodeTrendMiniChart.destroy();
+      if(nodeSourceMiniChart) nodeSourceMiniChart.destroy();
+
+      nodeTrendMiniChart = new Chart(trendMiniEl, {
+        type: 'line',
+        data: { labels:Array(20).fill(''), datasets:[{data:trendData, tension:0.3, borderWidth:2, pointRadius:0}] },
+        options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}
+      });
+
+      nodeSourceMiniChart = new Chart(sourceMiniEl, {
+        type: 'doughnut',
+        data: { labels:['Bot','ISP','Proxy','Other'], datasets:[{data:sourceData}] },
+        options:{plugins:{legend:{position:'bottom'}}}
+      });
+
+      ovTraffic.textContent = trendData[trendData.length-1] + ' Gbps';
+      ovSub.textContent = `即時流量： ${trendData[trendData.length-1]} Gbps`;
+
+      // big charts (instantiate when tab clicked)
+      createBigCharts(node, trendData, sourceData);
+
+      // show overview by default and hide others
+      showModalTab('overview');
+    }
+
+    function createBigCharts(node, trendData, sourceData){
+      // big trend
+      const bigTrendCtx = document.getElementById('nodeTrendBig').getContext('2d');
+      const bigSourceCtx = document.getElementById('nodeSourcesBig').getContext('2d');
+      const resourcesCtx = document.getElementById('nodeResourcesChart').getContext('2d');
+
+      if(nodeTrendBigChart) nodeTrendBigChart.destroy();
+      if(nodeSourcesBigChart) nodeSourcesBigChart.destroy();
+      if(nodeResourcesChart) nodeResourcesChart.destroy();
+
+      nodeTrendBigChart = new Chart(bigTrendCtx, {
+        type:'line',
+        data:{labels:trendData.map((_,i)=>i), datasets:[{label:'流量 (Gbps)',data:trendData,tension:0.35,borderWidth:2,pointRadius:0}]},
+        options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+      });
+
+      nodeSourcesBigChart = new Chart(bigSourceCtx, {
+        type:'pie',
+        data:{labels:['Bot','ISP','Proxy','Other'], datasets:[{data:sourceData}]},
+        options:{plugins:{legend:{position:'bottom'}}}
+      });
+
+      // resources (CPU/Memory/Packet loss)
+      const cpu = Math.floor(Math.random()*40)+20;
+      const mem = Math.floor(Math.random()*50)+20;
+      const pl = +(Math.random()*1.5).toFixed(2);
+      document.getElementById('resCPU').textContent = cpu + '%';
+      document.getElementById('resMem').textContent = mem + '%';
+      document.getElementById('resPL').textContent = pl + '%';
+
+      nodeResourcesChart = new Chart(resourcesCtx, {
+        type:'bar',
+        data:{labels:['CPU%','Memory%','Packet Loss%'], datasets:[{data:[cpu,mem,pl],borderRadius:6}]},
+        options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+      });
+    }
+
+    // modal tab switching
+    document.getElementById('modalTabs').addEventListener('click', (e)=>{
+      if(!e.target.classList.contains('tab')) return;
+      const tab = e.target.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+      showModalTab(tab);
+    });
+
+    function showModalTab(tab){
+      document.getElementById('overviewPanel').style.display = tab==='overview' ? 'block':'none';
+      document.getElementById('trendPanel').style.display = tab==='trend' ? 'block':'none';
+      document.getElementById('sourcePanel').style.display = tab==='sources' ? 'block':'none';
+      document.getElementById('resourcePanel').style.display = tab==='resources' ? 'block':'none';
+    }
+
+    // close modal
+    document.getElementById('closeModal').addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e)=>{
+      if(e.target === modalBackdrop) closeModal();
+    });
+    function closeModal(){
+      modalBackdrop.style.display = 'none';
+      modalBackdrop.setAttribute('aria-hidden','true');
+      // destroy charts to free memory
+      if(nodeTrendMiniChart) nodeTrendMiniChart.destroy();
+      if(nodeSourceMiniChart) nodeSourceMiniChart.destroy();
+      if(nodeTrendBigChart) nodeTrendBigChart.destroy();
+      if(nodeSourcesBigChart) nodeSourcesBigChart.destroy();
+      if(nodeResourcesChart) nodeResourcesChart.destroy();
+    }
+
+    // --------------
+    // demo actions for quick ops
+    // --------------
+    document.getElementById('btnMute').addEventListener('click', ()=> alert('已暫時封鎖可疑 IP（模擬）'));
+    document.getElementById('btnThrottle').addEventListener('click', ()=> alert('已啟用速率限制（模擬）'));
+    document.getElementById('btnEscalate').addEventListener('click', ()=> alert('已發起 BGP 緊急導流流程（模擬）'));
+
+    // initialize
+    goTo(location.hash ? location.hash.replace('#','') : 'home');
+
+    // accessibility: keyboard navigation for quiz options
+    document.getElementById('options').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && document.activeElement.classList.contains('opt')) document.activeElement.click();
+    });
+  </script>
+</body>
+</html>
